@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Cartera Financiera — Conexión con ChatGPT</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; width: 100%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+    .header { text-align: center; margin-bottom: 24px; }
+    .logo { font-size: 40px; margin-bottom: 12px; }
+    h1 { font-size: 22px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+    p { font-size: 14px; color: #94a3b8; line-height: 1.5; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+    input { width: 100%; padding: 12px 14px; background: #0f172a; border: 1px solid #475569; border-radius: 8px; color: #f8fafc; font-size: 15px; outline: none; transition: border-color 0.2s; }
+    input:focus { border-color: #38bdf8; }
+    .btn { width: 100%; padding: 12px; background: #0284c7; border: none; border-radius: 8px; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn:hover { background: #0369a1; }
+    .btn:disabled { background: #475569; cursor: not-allowed; }
+    .alert { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; display: none; line-height: 1.4; }
+    .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; }
+    .alert-info { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #bae6fd; }
+    .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="logo">📈</div>
+      <h1>Mi Cartera Financiera</h1>
+      <p>Inicia sesión con tu cuenta de la aplicación para conectar tus carteras de inversión con tu Custom GPT.</p>
+    </div>
+
+    <div id="alertBox" class="alert alert-error"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="tu@correo.com">
+      </div>
+      <div class="form-group">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button type="submit" id="submitBtn" class="btn">Conectar con ChatGPT</button>
+    </form>
+
+    <div class="footer">
+      🔒 Autenticación cifrada · Supabase Auth · Aislamiento multiusuario
+    </div>
+  </div>
+
+  <script>
+    // Configuración pública de Supabase
+    const SUPABASE_URL = 'https://ujzgvxiniaohvnwlqtre.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqemd2eGluaWFvaHZud2xxdHJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTQyODUsImV4cCI6MjA5MTQzMDI4NX0.zLdHGtvmAaJP5dtpuB25cmn8OyI0kjojexj8fMTFXqc';
+    const OAUTH_AUTHORIZE_URL = 'https://ujzgvxiniaohvnwlqtre.supabase.co/functions/v1/oauth-server/authorize';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id') || urlParams.get('auth_session');
+
+    const form = document.getElementById('loginForm');
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (!sessionId) {
+      alertBox.className = 'alert alert-error';
+      alertBox.innerText = 'Error: Solicitud de autorización no válida o sesión ausente. Por favor, reinicia la conexión desde ChatGPT.';
+      alertBox.style.display = 'block';
+      submitBtn.disabled = true;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!sessionId) return;
+
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Verificando credenciales...';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        // 1. Autenticación directa contra Supabase Auth API
+        const authResp = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const authData = await authResp.json();
+        if (!authResp.ok) {
+          const errDetail = authData.error_description || authData.msg || 'Credenciales incorrectas';
+          throw new Error(errDetail);
+        }
+
+        const accessToken = authData.access_token;
+        if (!accessToken) {
+          throw new Error('No se recibió token de acceso de Supabase');
+        }
+
+        // 2. Canjear la sesión de autorización temporal por el código OAuth
+        submitBtn.innerText = 'Autorizando a ChatGPT...';
+        const authorizeResp = await fetch(OAUTH_AUTHORIZE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + accessToken
+          },
+          body: JSON.stringify({
+            session_id: sessionId
+          })
+        });
+
+        const authResult = await authorizeResp.json();
+        if (!authorizeResp.ok) {
+          throw new Error(authResult.error_description || 'Sesión OAuth expirada o inválida. Inicia sesión de nuevo.');
+        }
+
+        if (!authResult.redirect_url) {
+          throw new Error('Respuesta inválida del servidor OAuth');
+        }
+
+        // 3. Redirigir de vuelta a ChatGPT con el código emitido
+        submitBtn.innerText = 'Redirigiendo a ChatGPT...';
+        window.location.href = authResult.redirect_url;
+
+      } catch (err) {
+        alertBox.className = 'alert alert-error';
+        alertBox.innerText = err.message || 'Error en la autenticación';
+        alertBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Conectar con ChatGPT';
+      }
+    });
+  </script>
+</body>
+</html>
