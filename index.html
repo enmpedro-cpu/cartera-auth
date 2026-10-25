@@ -53,6 +53,11 @@
   </div>
 
   <script>
+    // Si la redirección llega con hash de recuperación de contraseña, redirigir a reset-password.html
+    if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token')) {
+      window.location.replace('reset-password.html' + window.location.hash);
+    }
+
     // Configuración pública de Supabase
     const SUPABASE_URL = 'https://ujzgvxiniaohvnwlqtre.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqemd2eGluaWFvaHZud2xxdHJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTQyODUsImV4cCI6MjA5MTQzMDI4NX0.zLdHGtvmAaJP5dtpuB25cmn8OyI0kjojexj8fMTFXqc';
